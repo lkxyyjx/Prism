@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Net;
 using System.Net.Sockets.Kcp;
 using System.Net.Sockets;
+using System.Threading;
 using System.Threading.Tasks;
 using Prism.Library;
 
@@ -15,7 +16,7 @@ namespace Prism.Server
         Running,
         Disposed
     }
-    
+
     public class KcpServer
     {
         private ServerStatus ServerStatus { get; set; }
@@ -23,8 +24,9 @@ namespace Prism.Server
         private Socket _socket;
         private Dictionary<int, KcpConnection> _connections = new Dictionary<int, KcpConnection>();
         private byte[] _buffer = new byte[1024];
-        private EndPoint remoteEP = new IPEndPoint(IPAddress.Any, 8888);
-
+        private EndPoint _remoteEP = new IPEndPoint(IPAddress.Any, 8888);
+        private Queue<MessageForKcp> _msgQueue = new Queue<MessageForKcp>();
+        private Func<Task<>>
         public static KcpServer GetServer()
         {
             if (Instance == null || Instance.ServerStatus == ServerStatus.Disposed)
@@ -58,18 +60,40 @@ namespace Prism.Server
             ServerStatus = ServerStatus.Running;
             
             var listener = Task.Run(Listen);
+            var msgProcessor = Task.Run(ProcessMsg);
 
-            await Task.WhenAll(listener);
+            await Task.WhenAll(listener, msgProcessor);
         }
         
         private void Listen()
         {
-            if (ServerStatus != ServerStatus.Running)
-                return;
+            while (true)
+            {
+                if (ServerStatus != ServerStatus.Running)
+                    return;
 
-            
-            _socket.ReceiveFrom(_buffer, ref remoteEP);
-            //todo：process msg
+                _socket.ReceiveFrom(_buffer, ref _remoteEP);
+                _msgQueue.Enqueue(new MessageForKcp(_buffer));
+            }
+        }
+
+        private void ProcessMsg()
+        {
+            while (true)
+            {
+                if (_msgQueue.Count == 0)
+                {
+                    Thread.Sleep(100);
+                    continue;
+                }
+
+                var msg = _msgQueue.Dequeue();
+                if (!_connections.TryGetValue(msg.conv, out var con))
+                {
+                    
+                }
+                    
+            } 
         }
     }
 }
