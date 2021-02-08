@@ -22,11 +22,11 @@ namespace Prism.Server
         private ServerStatus ServerStatus { get; set; }
         private static KcpServer Instance { get; set; }
         private Socket _socket;
-        private Dictionary<int, KcpConnection> _connections = new Dictionary<int, KcpConnection>();
+        private Dictionary<uint, KcpConnection> _connections = new Dictionary<uint, KcpConnection>();
         private byte[] _buffer = new byte[1024];
         private EndPoint _remoteEP = new IPEndPoint(IPAddress.Any, 8888);
         private Queue<MessageForKcp> _msgQueue = new Queue<MessageForKcp>();
-        private Func<Task<>>
+        
         public static KcpServer GetServer()
         {
             if (Instance == null || Instance.ServerStatus == ServerStatus.Disposed)
@@ -73,7 +73,7 @@ namespace Prism.Server
                     return;
 
                 _socket.ReceiveFrom(_buffer, ref _remoteEP);
-                _msgQueue.Enqueue(new MessageForKcp(_buffer));
+                _msgQueue.Enqueue(new MessageForKcp(_buffer, _remoteEP));
             }
         }
 
@@ -90,10 +90,16 @@ namespace Prism.Server
                 var msg = _msgQueue.Dequeue();
                 if (!_connections.TryGetValue(msg.conv, out var con))
                 {
-                    
+                    CreateConnection(msg.conv, msg.remoteEp);
                 }
                     
+                //todo process msg
             } 
+        }
+
+        private void CreateConnection(uint conv, EndPoint remoteEp)
+        {
+            _connections.Add(conv, new KcpConnection(conv, remoteEp));
         }
     }
 }

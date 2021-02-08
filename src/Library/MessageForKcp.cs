@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Net;
 
 namespace Prism.Library
 {
@@ -9,14 +10,16 @@ namespace Prism.Library
     
     public class MessageForKcp
     {
-        public int conv;
+        public uint conv;
         public Packet packet;
+        public EndPoint remoteEp;
         
-        public MessageForKcp(Span<byte> bytes)
+        public MessageForKcp(Span<byte> bytes, EndPoint remoteEp)
         {
-            conv = BitConverter.ToInt32(bytes);
+            this.conv = BitConverter.ToUInt32(bytes);
+            this.remoteEp = remoteEp;
             bytes.Slice(4);
-            packet = GetPacketFromSpan(bytes);
+            this.packet = GetPacketFromSpan(bytes);
         }
 
         private Packet GetPacketFromSpan(Span<byte> bytes)
